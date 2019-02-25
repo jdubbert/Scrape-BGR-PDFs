@@ -1,0 +1,186 @@
+---
+title: "BGR Pull"
+author: "Jake Dubbert"
+date: "February 18, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The following code scrapes the desired PDFs from the BGR website, https://www.bgr.bund.de/EN/Themen/Energie/energie_node_en.html,and exports them to an excel file for the following IFs variables:
+
+EnCumProdGasBGR: uses table Natural Gas in XXXX (year), column Cum. Production 
+EnCumProdOilBGR: uses table Crude Oil in XXXX (year), column Cum. Production 
+EnReserCBMBGR: Coalbed Methane Reserves. Table Natural Gas Resources (under CBM) 
+EnReserGasBGR: Uses table Natural Gas in XXXX (Year), Column: Reserves 
+EnReserHeavyOilBGR: Uses table Crude Oil Reserves, Extra Heavy Oil column 
+EnReserOilBGR: Utilizes table Crude Oil in XXXX (year), column Reserves 
+EnReserOilSandsBGR: Uses table Crude Oil Reserves, column Oil Sand 
+EnReserShaleGasBGR: Uses table Natural Gas Reserves, column Shale Gas 
+EnReserShaleOilBGR: Uses table Crude Oil Reserves, column Shale Oil 
+EnResorCBMBGR: Uses table Natural Gas Resources, column CBM 
+EnResorGasBGR: Uses table Natural Gas in XXXX (year), column Remaining Potential 
+EnResorHeavyOilBGR: Uses table Crude Oil Resources, column Extra Heavy Oil 
+EnResorOilBGR: Uses table Crude Oil in XXXX (year), column Remaining Potential 
+EnResorOilSandsBGR: table Crude Oil Resources, column Oil Sand 
+EnResorShaleGasBGR: table Natural Gas Resources in XXXX, Column Shale Gas 
+EnResorShaleOilBGR: table Crude Oil Resources, Column Shale Oil 
+EnResorTightGasBGR: table Natural Gas Resources, column Tight Gas
+
+Press CONTROL+ALT+R to run the entire script
+
+
+Packages need to run the script
+```{r}
+library(tabulizer)
+library(rJava)
+library(dplyr)
+library(miniUI)
+library(gtools)
+library(openxlsx)
+library(shiny)
+library(varhandle)
+library(stringr)
+```
+ 
+## BGR 2016
+```{r}
+link <- "https://www.bgr.bund.de/EN/Themen/Energie/Downloads/energiestudie_2017_en.pdf?__blob=publicationFile&v=2"
+```
+
+## Crude Oil 2016
+```{r}
+aa <- extract_tables(link, encoding = "UTF-8", pages = 116:119, method = "stream")
+crude_oil_2016 <- as.data.frame(do.call(rbind, aa))
+crude_oil_2016 <- crude_oil_2016[-c(1:2,44:45,89:90,133:134,158:169),]
+crude_oil_2016 <- crude_oil_2016[,-c(2,5:6)]
+names(crude_oil_2016)[names(crude_oil_2016)=="V1"] <- "country"
+names(crude_oil_2016)[names(crude_oil_2016)=="V3"] <- "EnCumProdOilBGR"
+names(crude_oil_2016)[names(crude_oil_2016)=="V4"] <- "EnReserOilBGR"
+names(crude_oil_2016)[names(crude_oil_2016)=="V7"] <- "EnResorOilBGR"
+crude_oil_2016$year <- 2016
+crude_oil_2016 <- crude_oil_2016[,c(1,5,2,3,4)]
+crude_oil_2016 <- unfactor(crude_oil_2016)
+crude_oil_2016[crude_oil_2016=="-"] <- 0
+crude_oil_2016[crude_oil_2016=="n. s."] <- NA
+```
+
+## Natural Gas 2016
+```{r}
+a <- extract_tables(link, encoding = "UTF-8", pages = 126:129, method = "stream")
+natgas_2016 <- as.data.frame(do.call(rbind, a))
+natgas_2016 <- natgas_2016[-c(1:2,45:46,88:89,131:132,155:166),]
+natgas_2016 <- natgas_2016[,-c(2,5:6)]
+names(natgas_2016)[names(natgas_2016)=="V1"] <- "country"
+names(natgas_2016)[names(natgas_2016)=="V3"] <- "EnCumProdGasBGR"
+names(natgas_2016)[names(natgas_2016)=="V4"] <- "EnReserGasBGR"
+names(natgas_2016)[names(natgas_2016)=="V7"] <- "EnResorGasBGR"
+natgas_2016$year <- 2016
+natgas_2016 <- natgas_2016[,c(1,5,2,3,4)]
+natgas_2016 <- unfactor(natgas_2016)
+natgas_2016[natgas_2016=="-"] <- 0
+natgas_2016[natgas_2016=="n. s."] <- NA
+```
+
+## Crude Oil Reserves Table
+```{r}
+tbl1 <- extract_tables(link, encoding = "UTF-8", pages = 121)
+oil_reserve_2016 <- as.data.frame(do.call(rbind, tbl1))
+oil_reserve_2016 <- oil_reserve_2016[-c(1:2,23:38),]
+oil_reserve_2016 <- oil_reserve_2016[,-c(1,3,4)]
+names(oil_reserve_2016)[names(oil_reserve_2016)=="V2"] <- "country"
+names(oil_reserve_2016)[names(oil_reserve_2016)=="V5"] <- "EnReserShaleOilBGR"
+names(oil_reserve_2016)[names(oil_reserve_2016)=="V6"] <- "EnReserOilSandsBGR"
+names(oil_reserve_2016)[names(oil_reserve_2016)=="V7"] <- "EnReserHeavyOilBGR"
+oil_reserve_2016$year <- 2016
+oil_reserve_2016 <- oil_reserve_2016[,c(1,5,2,3,4)]
+oil_reserve_2016 <- unfactor(oil_reserve_2016)
+oil_reserve_2016[oil_reserve_2016=="-"] <- 0
+oil_reserve_2016[oil_reserve_2016=="n. s."] <- NA
+```
+
+## Crude Oil Resources Table
+```{r}
+tbl2 <- extract_tables(link, encoding = "UTF-8", pages = 120, method = "stream")
+oil_resource_2016 <- as.data.frame(do.call(rbind, tbl2))
+oil_resource_2016 <- oil_resource_2016[-c(1:2,23:38),]
+oil_resource_2016 <- oil_resource_2016[,-c(1,3,4,7)]
+oil_resource_2016 <- unfactor(oil_resource_2016)
+oil <- str_split_fixed(oil_resource_2016$V6, " ", 2)
+oil_resource_2016 <- oil_resource_2016[,-3]
+oil_resource_2016 <- cbind(oil_resource_2016, oil)
+
+names(oil_resource_2016)[names(oil_resource_2016)=="V2"] <- "country"
+names(oil_resource_2016)[names(oil_resource_2016)=="V5"] <- "EnResorShaleOilBGR"
+names(oil_resource_2016)[names(oil_resource_2016)=="1"] <- "EnResorOilSandsBGR"
+names(oil_resource_2016)[names(oil_resource_2016)=="2"] <- "EnResorHeavyOilBGR"
+oil_resource_2016$year <- 2016
+oil_resource_2016 <- oil_resource_2016[,c(1,5,2,3,4)]
+oil_resource_2016 <- unfactor(oil_resource_2016)
+oil_resource_2016[oil_resource_2016=="-"] <- 0
+oil_resource_2016[oil_resource_2016=="n. s."] <- NA
+```
+
+## Natural Gas Reserves Table
+```{r}
+tbl3 <- extract_tables(link, encoding = "UTF-8", pages = 131, method = "stream")
+gas_reserve_2016 <- as.data.frame(do.call(rbind, tbl3))
+gas_reserve_2016 <- gas_reserve_2016[-c(1:2,23:38),]
+gas_reserve_2016 <- gas_reserve_2016[,-c(1,3,4)]
+gas_reserve_2016 <- unfactor(gas_reserve_2016)
+gas <- str_split_fixed(gas_reserve_2016$V5, " ", 2)
+gas_reserve_2016 <- gas_reserve_2016[,-2]
+gas_reserve_2016 <- cbind(gas_reserve_2016, gas)
+gas_reserve_2016 <- as.data.frame(gas_reserve_2016)
+
+names(gas_reserve_2016)[names(gas_reserve_2016)=="gas_reserve_2016"] <- "country"
+names(gas_reserve_2016)[names(gas_reserve_2016)=="V2"] <- "EnReserShaleGasBGR"
+names(gas_reserve_2016)[names(gas_reserve_2016)=="V3"] <- "EnReserCBMBGR"
+gas_reserve_2016$year <- 2016
+gas_reserve_2016 <- gas_reserve_2016[,c(1,4,2,3)]
+gas_reserve_2016 <- unfactor(gas_reserve_2016)
+gas_reserve_2016[gas_reserve_2016=="-"] <- 0
+gas_reserve_2016[gas_reserve_2016=="n. s."] <- NA
+```
+
+## Natural Gas Resources Table
+```{r}
+tbl4 <- extract_tables(link, encoding = "UTF-8", pages = 130, method = "stream")
+gas_resource_2016 <- as.data.frame(do.call(rbind, tbl4))
+gas_resource_2016 <- gas_resource_2016[-c(1:2,23:38),]
+gas_resource_2016 <- gas_resource_2016[,-c(1,3,4)]
+
+names(gas_resource_2016)[names(gas_resource_2016)=="V2"] <- "country"
+names(gas_resource_2016)[names(gas_resource_2016)=="V5"] <- "EnResorTightGasBGR"
+names(gas_resource_2016)[names(gas_resource_2016)=="V6"] <- "EnResorShaleGasBGR"
+names(gas_resource_2016)[names(gas_resource_2016)=="V7"] <- "EnResorCBMBGR"
+gas_resource_2016$year <- 2016
+gas_resource_2016 <- gas_resource_2016[,c(1,5,2,3,4)]
+gas_resource_2016 <- unfactor(gas_resource_2016)
+gas_resource_2016[gas_resource_2016=="-"] <- 0
+gas_resource_2016[gas_resource_2016=="n. s."] <- NA
+```
+
+## BGR ALL 2016
+```{r}
+nat2 <- full_join(gas_reserve_2016, gas_resource_2016, by =c("country", "year"))
+oil <- full_join(oil_reserve_2016, oil_resource_2016, by = c("country", "year"))
+nat_oil <- full_join(nat2, oil, by = c("country", "year"))
+nat_oil2 <- full_join(natgas_2016, crude_oil_2016, by = c("country", "year"))
+bgr_2016 <- full_join(nat_oil,nat_oil2, by = c("country", "year"))
+```
+
+## Concord to country list
+```{r}
+concordance <- read.csv("IFS_country_concordance_BGR.csv")
+bgr_2016 <- full_join(bgr_2016, concordance, by = "country")
+bgr_2016 <- bgr_2016[,-1]
+bgr_2016 <- bgr_2016[,c(19,1:18)]
+```
+
+```{r}
+write.xlsx(bgr_2016, "bgr_2016_final.xlsx")
+```
+
